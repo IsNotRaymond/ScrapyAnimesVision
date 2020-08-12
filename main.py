@@ -109,7 +109,27 @@ def get_real_stream_links(browser, url):
 
 
 def get_real_download_links(browser, url):
-    pass
+    """
+    Pega os links de downloads direto de cada página
+    :param browser: Objeto Browser da biblioteca Mechanize
+    :param url: url de download https://animesvision.biz/animes/the-god-of-high-school/episodio-06/legendado/download
+    :return:
+    """
+    dict_ = {'480p': None, '720p': None, '1080p': None}
+    browser.open('url')
+
+    for link in browser.links():
+
+        if utils.anime_starts_with(link.url, ['https://down', 'http://down']):
+
+            if '480p' in link.url:
+                dict_['480p'] = link.url
+            if '720p' in link.url:
+                dict_['720p'] = link.url
+            if '1080p' in link.url:
+                dict_['1080p'] = link.url
+
+    return dict_
 
 
 def extract_name_and_link(link, url_base):
@@ -152,13 +172,6 @@ def main():
 
     # print(get_real_stream_links(browser,
     # 'https://animesvision.biz/animes/the-god-of-high-school/episodio-06/legendado'))
-
-    browser.open('https://animesvision.biz/animes/dorohedoro-dublado/episodio-01/dublado/download')
-
-    for link in browser.links():
-
-        if utils.anime_starts_with(link.url, ['https://down', 'http://down']):
-            print(link.url)
 
     # soup = BeautifulSoup(browser.response().read(), features='html5lib')
     # soup.prettify()
