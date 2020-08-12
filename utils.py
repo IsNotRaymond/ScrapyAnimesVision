@@ -239,23 +239,22 @@ def extract_name_and_link(link, url_base):
     return dictionary
 
 
-def download(browser, url, name=None):
+def download(url, name=None):
     """
-    Faz o download do arquivo
+    Faz o download de um link
 
-    :param browser: Objeto Browser da biblioteca Mechanize
     :param url: link direto de download
-    :param name: Nome do arquivo caso deseje ser salvo
+    :param name: Nome do arquivo caso deseje ser salvo, caso em branco, o arquivo será salvo no nome padrão
     :return: Não existe retorno
     """
 
     if name is None:
         name = url.split('/')[-1]
 
-    browser.open(url)
-    length = browser.response().info().get('Content-Length')
-
     r = requests.get(url, headers=HEADERS, stream=True)
+    length = r.headers.get('content-length')
+
+    print(length)
 
     with open(name, 'ab') as file:
         for data in tqdm(iterable=r.iter_content(chunk_size=1024), total=(int(length) / 1024) + 1, unit='KB'):
