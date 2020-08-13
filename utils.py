@@ -4,6 +4,7 @@ import os
 import http.cookiejar as cookielib
 import mechanize
 import requests
+import json
 from tqdm import tqdm
 from bs4 import BeautifulSoup
 
@@ -32,6 +33,24 @@ HEADERS = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KH
            'Referer': 'http://ouo.io'}
 
 
+def write_txt(variable, name_file):
+    """
+    Função que gera um arquivo txt de uma lista contendo dicionarios
+    :param variable: a lista de dicionarios
+    :param name_file: nome do arquivo a ser salvo
+    :return:
+    """
+
+    print('Escrevendo em %s' % name_file)
+
+    with open(name_file, 'at') as file:
+
+        for kek in variable:
+            file.write(json.dumps(kek) + '\n')
+
+            print('%s escrito' % kek.get('name'))
+
+
 def _create_connection(address, timeout=None, source_address=None):
     """
     Código pego no stackoverflow para poder utilizar o Tor
@@ -51,7 +70,8 @@ def browser_conf():
     Caso tente executar essa função sem que o Tor esteja em execução o programa irá apresentar erro
     :return: retorna o objeto Browser da biblioteca Mechanize
     """
-    socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, '127.0.0.1', 9050)
+    socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
+
     socket.socket = socks.socksocket
     socket.create_connection = _create_connection
 
@@ -75,7 +95,6 @@ def browser_conf():
     browser.set_cookiejar(cookie)
 
     # print(browser.open('https://check.torproject.org/').read()) -> Checar se o browser está configurado no Tor
-
     return browser
 
 
@@ -97,13 +116,14 @@ def anime_starts_with(string, array=None):
     return False
 
 
-def login_animes_vision():
+def login_vision():
     """
     Essa funcão irá usar o browser configurado e realizar o login no site do Animes Vision (permitindo os downloads)
     :return: retornará o browser autenticado no site
     """
     browser = browser_conf()
     browser.open('http://animesvision.biz/login')
+
     browser.select_form(nr=0)
     browser.form['email'] = 'yocalo9921@ofmailer.net'
     browser.form['password'] = os.environ.get('PASSWORD')
@@ -112,27 +132,26 @@ def login_animes_vision():
     return browser
 
 
-def get_links_animes_vision(browser, start, finish, site, pattern):
+def get_links_vision(browser, start, finish, pattern):
     """
     Essa função irá organizar uma lista com o nome e a url do anime na forma de chave e valor
     :param browser: Objeto da biblioteca Mechanize devidamente logado e configurado
     :param start: começo da pesquisa Nota: As páginas do site precisam ser indexadas por numeros
     :param finish: final da pesquisa
-    :param site: url base do site "http://animesvision.biz"
     :param pattern: filtro para a pesquisa Ex: "/all-series?page=", "/cartoons?page="
     :return: retorna a lista completa de animes
     """
     links = []
 
     for i in range(start, finish + 1):
-        url = site + pattern + str(i)
-        print('Pesquisando Atualmente: %s' % url)
+        url = ANIMES_VISION + pattern + str(i)
+        print('Atualmente em: %s' % url)
         browser.open(url)
 
         for link in browser.links():
             if anime_starts_with(link.url):
 
-                dict_ = extract_name_and_link(link, site)
+                dict_ = extract_name_and_link_vision(link, ANIMES_VISION)
 
                 if len(links) == 0:
                     links.append(dict_)
@@ -147,10 +166,10 @@ def get_links_animes_vision(browser, start, finish, site, pattern):
     return links
 
 
-def get_download_and_stream_links_base(browser, url):
+def get_download_and_stream_links_base_vision(browser, url):
     """
     Essa função pega os links de stream e download de um determinado anime e deixa organizado na forma de episódios
-    :param browser: o objeto browser da biblioteca Mechanize (devidamente logado)
+    :param browser: o objeto browser da biblioteca Mechanize
     :param url: a url do determinado anime
     :return: retorna um dicionário com os links de stream e download
     """
@@ -159,14 +178,14 @@ def get_download_and_stream_links_base(browser, url):
     browser.open(url)
 
     for link in browser.links():
-        if 'episodio' in link.url:
+        if 'episodio' in link.url or 'filme-' in link.url:
             dict_[start] = {'stream': link.url, 'download': link.url + '/download'}
             start += 1
 
     return dict_
 
 
-def get_real_stream_link(browser, url):
+def get_real_stream_link_vision(browser, url):
     """
     Pega os links de stream de uma determinada página nas qualidades possíveis
     :param browser: Objeto Browser da biblioteca Mechanize
@@ -176,6 +195,7 @@ def get_real_stream_link(browser, url):
 
     dict_ = {'480p': None, '720p': None, '1080p': None}
 
+    print('Pesquisando link de stream em %s' % url)
     browser.open(url)
     soup = BeautifulSoup(browser.response().read(), features='html5lib')
 
@@ -203,14 +223,17 @@ def get_real_stream_link(browser, url):
     return dict_
 
 
-def get_real_download_link(browser, url):
+def get_real_download_link_vision(browser, url):
     """
     Pega os links de downloads direto de cada página
     :param browser: Objeto Browser da biblioteca Mechanize
     :param url: url de download https://animesvision.biz/animes/the-god-of-high-school/episodio-06/legendado/download
     :return:
     """
+
     dict_ = {'480p': None, '720p': None, '1080p': None}
+
+    print('Pesquisando link de download em: %s' % url)
     browser.open(url)
 
     for link in browser.links():
@@ -227,14 +250,14 @@ def get_real_download_link(browser, url):
     return dict_
 
 
-def extract_name_and_link(link, url_base):
+def extract_name_and_link_vision(link, url_base):
     """
     Com o objeto Link da função links() do Mechanize, essa função simples pega apenas os dados relevantes
     :param link: objeto link
     :param url_base: url base do site
     :return: dicionario com duas chaves "name" e "url"
     """
-    dictionary = {'name': link.attrs[1][1], 'url': url_base + link.url}
+    dictionary = {'name': link.attrs[1][1], 'url-vision': url_base + link.url}
 
     return dictionary
 
@@ -254,11 +277,78 @@ def download(url, name=None):
     r = requests.get(url, headers=HEADERS, stream=True)
     length = r.headers.get('content-length')
 
-    print(length)
-
     with open(name, 'ab') as file:
         for data in tqdm(iterable=r.iter_content(chunk_size=1024), total=(int(length) / 1024) + 1, unit='KB'):
             file.write(data)
 
     print('Download completo')
 
+
+def scrapy_all_links_vision(browser):
+    """
+    CUIDADO !!!!!!!!!
+
+    Essa função é perigosa, ela vai varrer o site inteiro do animes vision e adicionar todas as informações em um
+    arquivo txt Obs: Crie uma pasta chamada "Vision" no diretorio que será executado o arquivo ou irá gerar um erro
+    e o seu tempo será desperdiçado
+    :param browser: Objeto da classe mechanize devidamente logado e configurado
+    :return: Não há retorno
+    """
+    links_all_series = get_links_vision(browser, 1, 1, PATTERN_ALL_SERIES)
+    links_cartoons = get_links_vision(browser, 1, 4, PATTERN_CARTOONS)
+    links_movies = get_links_vision(browser, 1, 1, PATTERN_MOVIES)
+    links_doramas = get_links_vision(browser, 1, 2, PATTERN_DORAMAS)
+    links_live_actions = get_links_vision(browser, 1, 3, PATTERN_LIVEACTION)
+
+    links_all_series = add_downloads_links_in_a_list(browser, links_movies)
+
+    print(links_all_series)
+
+    """write_txt(links_all_series, os.getcwd() + '\\Vision\\animes.txt')
+    write_txt(links_cartoons, os.getcwd() + '\\Vision\\cartoons.txt')
+    write_txt(links_movies, os.getcwd() + '\\Vision\\movies.txt')
+    write_txt(links_doramas, os.getcwd() + '\\Vision\\doramas.txt')
+    write_txt(links_live_actions, os.getcwd() + '\\Vision\\live_action.txt')"""
+
+
+def add_downloads_links_in_a_list(browser, array):
+    """
+    Essa função irá adicionar os links diretos de stream e de download dada uma lista com dicionarios contendo a url
+    :param browser: O browser devidamente configurado
+    :param array: array de dicionarios no seguinte modelo [{'name': 'xx', 'url-vision': 'xx'}]
+    :return: será retornado um array de dicionario da seguinte forma [{'name': 'xx',
+                                                                       'url-vision': xx
+                                                                       'links': {1: {'stream-br': 'xx',
+                                                                                      'download-br': 'xx',
+                                                                                     }
+                                                                                 }
+                                                                       }]
+    """
+    new_array = []
+
+    for dict_ in array:
+        links = get_download_and_stream_links_base_vision(browser, dict_.get('url-vision'))
+
+        dict_['links'] = add_real_stream_and_download_links_in_a_dict(browser, links)
+        new_array.append(dict_)
+
+    return new_array
+
+
+def add_real_stream_and_download_links_in_a_dict(browser, dict_):
+    """
+    Dado um dicionario contendo o link base de download e de stream, essa funcao irá substitui-los pelos links
+    diretos
+    :param browser: Browser devidamente configurado
+    :param dict_: dicionario contendo o link base de download e de stream
+    :return: dicionario contendo os links diretos de download e de stream
+    """
+    new_dict = {}
+
+    for episode in dict_.keys():
+        dict_download = get_real_download_link_vision(browser, dict_.get(episode).get('download'))
+        dict_stream = get_real_stream_link_vision(browser, dict_.get(episode).get('stream'))
+
+        new_dict[episode] = {'stream-br': dict_stream, 'download-br': dict_download}
+
+    return new_dict

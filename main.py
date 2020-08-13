@@ -2,12 +2,7 @@ from utils import *
 
 
 def main():
-    browser = login_animes_vision()
-
-    download(browser, 'https://down4.animesvision.com.br/freevision/TMlkUpojEYHUrmiaNEYJ_g/1597194373'
-                      '/Z1C1gbKDKNDqBdk42WVF/1/N/naruto/480p/AnV-01.mp4')
-
-    # links = get_links_animes_vision(browser, 1, 106, utils.ANIMES_VISION, utils.PATTERN_ALL_SERIES)
+    browser = login_vision()
 
     # kek = get_download_and_stream_links_base(browser, 'https://animesvision.biz/animes/the-god-of-high-school')
 
