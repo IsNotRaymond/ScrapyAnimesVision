@@ -151,7 +151,7 @@ def get_links_vision(browser, start, finish, pattern):
         for link in browser.links():
             if anime_starts_with(link.url):
 
-                dict_ = extract_name_and_link_vision(link, ANIMES_VISION)
+                dict_ = extract_name_and_link_vision(link)
 
                 if len(links) == 0:
                     links.append(dict_)
@@ -193,7 +193,7 @@ def get_real_stream_link_vision(browser, url):
     :return: Retorna um dicionario com as qualidades e seu respectivo link de stream
     """
 
-    dict_ = {'480p': None, '720p': None, '1080p': None}
+    dict_ = {}
 
     print('Pesquisando link de stream em %s' % url)
     browser.open(url)
@@ -210,15 +210,21 @@ def get_real_stream_link_vision(browser, url):
 
             for item in array:
                 if item.startswith('file:'):
-                    url_stream = item.replace('\'', '').replace('file:', '')
+                    url_stream = item.replace('\'', '').replace('file:', '').replace('playlist', 'chunk')
 
                     if '480p' in url_stream:
                         dict_['480p'] = url_stream
                     if '720p' in url_stream:
                         dict_['720p'] = url_stream
 
-    if dict_['720p'] is not None:
-        dict_['1080p'] = dict_.get('720p').replace('720p', '1080p')
+    r1 = requests.get(dict_.get('480p').replace('480p', '1080p')).status_code
+    r2 = requests.get(dict_.get('720p').replace('720p', '1080p')).status_code
+
+    if r1 != 404:
+        dict_['1080p'] = dict_.get('480p').replace('480p', '1080p')
+
+    elif r2 != 404:
+        dict_['1080p'] = dict_.get('720p').replace('720', '1080p')
 
     return dict_
 
@@ -250,14 +256,24 @@ def get_real_download_link_vision(browser, url):
     return dict_
 
 
-def extract_name_and_link_vision(link, url_base):
+def get_all_links_stream_vision(browser, path):
+    anime_links = get_download_and_stream_links_base_vision(browser, ANIMES_VISION + path)
+    dict_ = {}
+
+    for key in anime_links.keys():
+        dict_[key] = get_real_stream_link_vision(browser, anime_links[key].get('stream'))
+
+    return dict_
+
+
+def extract_name_and_link_vision(link):
     """
     Com o objeto Link da função links() do Mechanize, essa função simples pega apenas os dados relevantes
     :param link: objeto link
     :param url_base: url base do site
     :return: dicionario com duas chaves "name" e "url"
     """
-    dictionary = {'name': link.attrs[1][1], 'url-vision': url_base + link.url}
+    dictionary = {'name': link.attrs[1][1], 'url-vision': link.url}
 
     return dictionary
 
@@ -289,26 +305,28 @@ def scrapy_all_links_vision(browser):
     CUIDADO !!!!!!!!!
 
     Essa função é perigosa, ela vai varrer o site inteiro do animes vision e adicionar todas as informações em um
-    arquivo txt Obs: Crie uma pasta chamada "Vision" no diretorio que será executado o arquivo ou irá gerar um erro
+    arquivo txt Obs: Crie uma pasta chamada "Vision" no diretório que será executado o arquivo ou irá gerar um erro
     e o seu tempo será desperdiçado
     :param browser: Objeto da classe mechanize devidamente logado e configurado
     :return: Não há retorno
     """
-    links_all_series = get_links_vision(browser, 1, 1, PATTERN_ALL_SERIES)
+    links_all_series = get_links_vision(browser, 1, 106, PATTERN_ALL_SERIES)
     links_cartoons = get_links_vision(browser, 1, 4, PATTERN_CARTOONS)
-    links_movies = get_links_vision(browser, 1, 1, PATTERN_MOVIES)
+    links_movies = get_links_vision(browser, 1, 18, PATTERN_MOVIES)
     links_doramas = get_links_vision(browser, 1, 2, PATTERN_DORAMAS)
-    links_live_actions = get_links_vision(browser, 1, 3, PATTERN_LIVEACTION)
+    links_live_actions = get_links_vision(browser, 1, 2, PATTERN_LIVEACTION)
 
-    links_all_series = add_downloads_links_in_a_list(browser, links_movies)
+    links_all_series = add_downloads_links_in_a_list(browser, links_all_series)
+    links_cartoons = add_downloads_links_in_a_list(browser, links_cartoons)
+    links_movies = add_downloads_links_in_a_list(browser, links_movies)
+    links_doramas = add_downloads_links_in_a_list(browser, links_doramas)
+    links_live_actions = add_downloads_links_in_a_list(browser, links_live_actions)
 
-    print(links_all_series)
-
-    """write_txt(links_all_series, os.getcwd() + '\\Vision\\animes.txt')
+    write_txt(links_all_series, os.getcwd() + '\\Vision\\animes.txt')
     write_txt(links_cartoons, os.getcwd() + '\\Vision\\cartoons.txt')
     write_txt(links_movies, os.getcwd() + '\\Vision\\movies.txt')
     write_txt(links_doramas, os.getcwd() + '\\Vision\\doramas.txt')
-    write_txt(links_live_actions, os.getcwd() + '\\Vision\\live_action.txt')"""
+    write_txt(links_live_actions, os.getcwd() + '\\Vision\\live_action.txt')
 
 
 def add_downloads_links_in_a_list(browser, array):
