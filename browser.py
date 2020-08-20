@@ -6,7 +6,21 @@ import os
 
 
 class Browser:
-    def __init__(self):
+    """
+    Classe usada para fazer requisições (normais ou via Tor) no animes vision, para utilizá-la, basta instanciar e rodar
+    o método setup(), por exemplo br = Browser().setup()
+    OBS:
+    Caso queira fazer requisições normais ou não tem o Tor configurado em seu computador, utilize:
+    br = Browser(False).setup()
+    """
+    def __init__(self, tor=True):
+        """
+        Construtor da classe, é necessário passar se deseja usar o Tor ou não
+        :param tor: booleano para verificação
+
+        OBS:
+        os headers abaixo são necessários para fazer requisições de download, caso não houvesse isso iria dar erro 403
+        """
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.87 '
                           'Safari/537.36',
@@ -18,12 +32,19 @@ class Browser:
             'Connection': 'keep-alive',
             'Cache-Control': 'max-age=0',
             'Referer': 'http://ouo.io'}
+        self.tor = tor
 
     def __browser_conf(self):
-        socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
+        """
+        Configuração do browser para que não seja tratado como um robô qualquer
+        :return:
+        """
 
-        socket.socket = socks.socksocket
-        socket.create_connection = self._create_connection
+        if self.tor:
+            socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, "127.0.0.1", 9050)
+
+            socket.socket = socks.socksocket
+            socket.create_connection = self._create_connection
 
         cookie = cookielib.CookieJar()
         browser = mechanize.Browser()
@@ -47,11 +68,15 @@ class Browser:
         return browser
 
     def setup(self):
+        """
+        Faz o login no site do animes vision (Necessário para pegar os links de download) e retorna o browser com login
+        :return:
+        """
         browser = self.__browser_conf()
         browser.open('http://animesvision.biz/login')
 
         browser.select_form(nr=0)
-        browser.form['email'] = os.environ.get('EMAIL')
+        browser.form['email'] = 'yocalo9921@ofmailer.net'
         browser.form['password'] = os.environ.get('PASSWORD')
         browser.submit()
 
@@ -60,7 +85,7 @@ class Browser:
     @staticmethod
     def _create_connection(address, timeout=None, source_address=None):
         """
-        Código pego no stackoverflow para poder utilizar o Tor
+        Código pego no stackoverflow para poder utilizar o Tor. Não sei o que faz
         :param address:
         :param timeout:
         :param source_address:
