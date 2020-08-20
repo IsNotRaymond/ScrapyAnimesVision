@@ -1,0 +1,7 @@
+mechanize
+pymongo
+requests
+tqdm
+bs4
+beautifulsoup4
+dnspython

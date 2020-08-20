@@ -51,7 +51,7 @@ class Browser:
         browser.open('http://animesvision.biz/login')
 
         browser.select_form(nr=0)
-        browser.form['email'] = 'yocalo9921@ofmailer.net'
+        browser.form['email'] = os.environ.get('EMAIL')
         browser.form['password'] = os.environ.get('PASSWORD')
         browser.submit()
 
