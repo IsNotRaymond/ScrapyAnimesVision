@@ -22,6 +22,8 @@ class AnimesVisionScraper:
     def run(self):
         self.set_animes()
         self.set_stream_links()
+        self.save_on_db()
+        self.__update_not_completed()
 
     def run_all_site(self, value=131):
         self.finish = value
@@ -57,19 +59,56 @@ class AnimesVisionScraper:
             self.__save_on_links_vision(dict_)
             self.__switch_inqueue(dict_, False)
 
+    def scan_database(self):
+        self.__update_not_completed()
+
     def __switch_inqueue(self, document, boolean):
         self._database.update('list_animes',
                               self._database.search_one('list_animes', 'path', document.get('path')),
                               'inQueue', boolean)
         self.__debug(document.get('path'), 'InQueue %s' % boolean)
 
-    def test_db2(self):
-        list1 = self._database.get_list('links_vision', ['path'])
-        list2 = self._database.get_list('list_animes', ['path'])
+    def __scan_not_completed(self):
+        query = self._database.get_list('links_vision', ['path', 'name', 'links'])
+        not_completed = []
 
-        for item in list2:
-            if item not in list1:
-                self.__debug(item, 'não foi adicionado os links de stream')
+        for item in query:
+            dict_ = {'path': item.get('path'), 'name': item.get('name')}
+
+            episodes = item.get('links').get('stream')
+            array = self.__get_links_from_path(dict_, 1)
+
+            amount_episodes = len(episodes)
+            amount_array = len(array)
+
+            if amount_array > amount_episodes:
+                difference = amount_array - amount_episodes
+                item['array'] = array[amount_array - difference:amount_array]
+                not_completed.append(item)
+
+        self.__debug('%d' % len(not_completed), 'animes desatualizados')
+        return not_completed
+
+    def __update_not_completed(self):
+        array = self.__scan_not_completed()
+
+        for item in array:
+            self.path = []
+            self.path.append({'name': item.get('name'), 'path': item.get('path')})
+            episodes = item.get('links').get('stream')
+            self.__set_stream_links_base(self.path[0], item.get('array'), len(episodes) + 1)
+
+            doc = self.path[0]
+            stream = doc.get('stream')
+
+            for key in stream.keys():
+                episodes[key] = stream.get(key)
+
+            self._database.update('links_vision',
+                                  self._database.search_one('links_vision', 'path', doc.get('path')),
+                                  'links', {'stream': episodes})
+
+            self.__debug(doc.get('name'), 'Links foram atualizados')
 
     def __save_on_list_animes(self, document):
         query = self._database.search_one('list_animes', 'path', document.get('path'))
@@ -85,8 +124,14 @@ class AnimesVisionScraper:
 
         if query is None:
             q = self._database.search_one('list_animes', 'path', document.get('path'))
-
-            self._database.save('links_vision', document)
+            new_doc = {
+                'name': document.get('name'),
+                'path': document.get('path'),
+                'links': {
+                    'stream': document.get('stream')
+                }
+            }
+            self._database.save('links_vision', new_doc)
             self._database.update('list_animes', q, 'isStreamComplete', True)
             self.__debug(document.get('path'), 'salvo no links_vision')
 
@@ -95,7 +140,7 @@ class AnimesVisionScraper:
                 self.__debug(document.get('path'), 'lista de episodios já atualizada')
                 return
             else:
-                self._database.update('links_vision', query, 'stream', document.get('stream'))
+                self._database.update('links_vision', query, 'links', {'stream': document.get('stream')})
                 self.__debug(document.get('path'), 'lista de episodios foi atualizada com sucesso')
 
     def __get_list_animes(self, pattern, string):
@@ -105,7 +150,7 @@ class AnimesVisionScraper:
         anchor = soup.find_all('a', {'class': 'thumb'})
 
         for item in anchor:
-            dict_ = {'name': item['title'], 'path': item['href']}
+            dict_ = {'path': item['href']}
 
             self.path.append(dict_)
 
@@ -117,13 +162,16 @@ class AnimesVisionScraper:
             self.__debug('Pesquisando em', url)
 
     def __get_links_from_path(self, dict_, magic_number):
-        self.__debug('Analisando', dict_['name'])
+        self.__debug('Analisando', dict_.get('path'))
         links_stream = []
         links_download = []
 
         url = self._ANIMES_VISION + dict_.get('path')
 
         soup = self.__get_soup(url)
+        name = soup.find('h1', class_="dc-title").text
+        dict_['name'] = name
+
         episodes_div = soup.find('div', id='episodes-list')
         anchor_tag = episodes_div.find_all('a', class_='btn btn-sm btn-go2')
 
@@ -137,15 +185,21 @@ class AnimesVisionScraper:
 
     def __set_stream_links(self):
         for link in self.path:
+            self.__set_stream_links_base(link)
+
+    def __set_stream_links_base(self, link, links=None, count=None):
+        dict_ = {}
+
+        if count is None:
             count = 1
-            dict_ = {}
+        if links is None:
             links = self.__get_links_from_path(link, 1)
 
-            for episode in links:
-                dict_[str(count)] = self.__get_stream_from_path(episode)
-                count += 1
+        for episode in links:
+            dict_[str(count)] = self.__get_stream_from_path(episode)
+            count += 1
 
-            link['stream'] = dict_
+        link['stream'] = dict_
 
     def __get_stream_from_path(self, url):
         soup = self.__get_soup(url)
