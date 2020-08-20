@@ -12,6 +12,10 @@ class Browser:
     OBS:
     Caso queira fazer requisições normais ou não tem o Tor configurado em seu computador, utilize:
     br = Browser(False).setup()
+
+    Variáveis de ambiente necessárias:
+    EMAIL: Email para fazer login no Animes Vision
+    PASSWORD: Senha de acesso
     """
     def __init__(self, tor=True):
         """
@@ -70,13 +74,14 @@ class Browser:
     def setup(self):
         """
         Faz o login no site do animes vision (Necessário para pegar os links de download) e retorna o browser com login
+
         :return:
         """
         browser = self.__browser_conf()
         browser.open('http://animesvision.biz/login')
 
         browser.select_form(nr=0)
-        browser.form['email'] = 'yocalo9921@ofmailer.net'
+        browser.form['email'] = os.environ.get('EMAIL')
         browser.form['password'] = os.environ.get('PASSWORD')
         browser.submit()
 
