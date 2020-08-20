@@ -20,9 +20,9 @@ class AnimesVisionScraper:
         self._PATTERN_RECENTLY = '/ultimas-adicionadas?page='
 
     def run(self):
-        # self.set_animes()
-        # self.set_stream_links()
-        # self.save_on_db()
+        self.set_animes()
+        self.set_stream_links()
+        self.save_on_db()
         self.__update_not_completed()
 
     def run_all_site(self, value=131):
