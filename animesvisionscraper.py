@@ -20,9 +20,9 @@ class AnimesVisionScraper:
         self._PATTERN_RECENTLY = '/ultimas-adicionadas?page='
 
     def run(self):
-        self.set_animes()
-        self.set_stream_links()
-        self.save_on_db()
+        # self.set_animes()
+        # self.set_stream_links()
+        # self.save_on_db()
         self.__update_not_completed()
 
     def run_all_site(self, value=131):
@@ -71,6 +71,7 @@ class AnimesVisionScraper:
     def __scan_not_completed(self):
         query = self._database.get_list('links_vision', ['path', 'name', 'links'])
         not_completed = []
+        count = 1
 
         for item in query:
             dict_ = {'path': item.get('path'), 'name': item.get('name')}
@@ -85,6 +86,9 @@ class AnimesVisionScraper:
                 difference = amount_array - amount_episodes
                 item['array'] = array[amount_array - difference:amount_array]
                 not_completed.append(item)
+
+            count += 1
+            self.__debug(count, 'animes já analisados')
 
         self.__debug('%d' % len(not_completed), 'animes desatualizados')
         return not_completed
